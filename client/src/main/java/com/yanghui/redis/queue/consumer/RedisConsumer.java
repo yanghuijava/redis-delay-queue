@@ -1,6 +1,5 @@
 package com.yanghui.redis.queue.consumer;
 
-import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -12,6 +11,7 @@ import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timeout;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.Redisson;
 import org.redisson.api.RLock;
 import org.redisson.api.RScoredSortedSet;
@@ -27,6 +27,7 @@ import java.util.concurrent.*;
 /**
  * @author yanghui
  */
+@Slf4j
 public class RedisConsumer implements IConsumer{
 
     private RedissonClient redissonClient;
@@ -121,6 +122,7 @@ public class RedisConsumer implements IConsumer{
     @Override
     public synchronized void start() {
         if(isRunning){
+            log.info("The consumer has started！");
             return;
         }
         Assert.notBlank(this.topic,"topic is not null");
@@ -177,6 +179,7 @@ public class RedisConsumer implements IConsumer{
             handleAckException();
         },2,60,TimeUnit.SECONDS);
         this.isRunning = true;
+        log.info("Successful consumer startup！");
         /** 启动后 执行一次 任务推送 **/
         pushTask();
     }
@@ -232,7 +235,7 @@ public class RedisConsumer implements IConsumer{
         try{
             messageStatus  = this.consumerListener.onMessage(message);
         }catch (Exception e){
-            e.printStackTrace();
+            log.error(this.consumerListener.getClass().getName() + "#onMessage exception",e);
         }
         if(messageStatus == null){
             messageStatus = MessageStatus.DELAY;
