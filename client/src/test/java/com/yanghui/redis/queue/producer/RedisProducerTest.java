@@ -22,7 +22,7 @@ public class RedisProducerTest {
     public void test1(){
         RedisProducer redisProducer = new RedisProducer();
         redisProducer.sendDelayMessage(Message.create("order_cancel","消息："
-                + DateUtil.format(new Date(),"yyyy-MM-dd HH:mm:ss.SSS")),1000 * 5);
+                + DateUtil.format(new Date(),"yyyy-MM-dd HH:mm:ss.SSS")),1000 * 10);
     }
 
     @Test

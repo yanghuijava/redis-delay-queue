@@ -5,7 +5,7 @@ package com.yanghui.redis.queue.util;
  */
 public class TopicUtil {
 
-    public static final String PREFIX = "redis_delay_queue:";
+    public static final String PREFIX = "redis_delay_queue_origin:";
 
     public static final String PREFIX_STORE = "redis_delay_queue_store:";
 

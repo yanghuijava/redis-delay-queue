@@ -1,5 +1,6 @@
 package com.yanghui.redis.queue.consumer;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -12,10 +13,14 @@ import io.netty.util.Timeout;
 import lombok.Getter;
 import lombok.Setter;
 import org.redisson.Redisson;
+import org.redisson.api.RLock;
+import org.redisson.api.RScoredSortedSet;
 import org.redisson.api.RScript;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
+import org.redisson.client.protocol.ScoredEntry;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.*;
 
@@ -45,6 +50,14 @@ public class RedisConsumer implements IConsumer{
     @Getter
     @Setter
     private int consumeThreadMax = 20;
+
+    @Getter
+    @Setter
+    private Integer maxRetryCount = 16;
+
+    /** 重试次数 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h **/
+    @Getter
+    private String retryLevel = "10,30,60,120,180,240,300,360,420,480,540,600,1200,1800,3600,7200";
 
     private final ScheduledExecutorService scheduledExecutorService;
 
@@ -99,13 +112,23 @@ public class RedisConsumer implements IConsumer{
         this.consumerListener = consumerListener;
     }
 
+    private void checkRetryParams(){
+        if(this.retryLevel.split(",").length < this.maxRetryCount){
+            throw new IllegalArgumentException("最大重试次数不能大于重试级别数量");
+        }
+    }
+
     @Override
     public synchronized void start() {
-        Assert.notBlank(this.topic,"topic is not null");
-        Assert.notNull(consumerListener,"consumerListener is not null");
         if(isRunning){
             return;
         }
+        Assert.notBlank(this.topic,"topic is not null");
+        Assert.notNull(consumerListener,"consumerListener is not null");
+        Assert.isTrue(this.maxRetryCount > 0,"maxRetryCount must be greater than 0");
+        Assert.notBlank(this.retryLevel,"retryLevel is not null");
+        this.checkRetryParams();
+
         /** 监听channel消息 **/
         this.redissonClient.getTopic(channelKey, StringCodec.INSTANCE).addListener(String.class, (channel, msg) -> {
             /** 获取订阅channel消息，内容为延迟消息的到期时间戳 **/
@@ -149,15 +172,36 @@ public class RedisConsumer implements IConsumer{
             }
         },2,10,TimeUnit.SECONDS);
 
-        this.preTopicExceptionExecutorService.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-
-            }
-        },2,15,TimeUnit.SECONDS);
+        /** 处理ack异常情况 每1分钟执行一次**/
+        this.preTopicExceptionExecutorService.scheduleAtFixedRate(() -> {
+            handleAckException();
+        },2,60,TimeUnit.SECONDS);
         this.isRunning = true;
         /** 启动后 执行一次 任务推送 **/
         pushTask();
+    }
+
+    private void handleAckException(){
+        String lockKey = "redis_delay_queue_ack_exception_lock_key:" + this.topic;
+        RLock lock = this.redissonClient.getLock(lockKey);
+        boolean locked = lock.tryLock();
+        try {
+            if(!locked){
+                return;
+            }
+            RScoredSortedSet<String> preTopicZset = this.redissonClient.getScoredSortedSet(this.preTopicKey,StringCodec.INSTANCE);
+            Collection<ScoredEntry<String>> scoredEntries = preTopicZset.entryRange(0,100);
+            for(ScoredEntry<String> entry : scoredEntries){
+                double diff = System.currentTimeMillis() - entry.getScore();
+                if(diff >= 1000 * 60 * 3){
+                    ack(entry.getValue(),MessageStatus.DELAY);
+                }
+            }
+        }finally {
+            if(locked){
+                lock.unlock();
+            }
+        }
     }
 
     private void pushTask(){
@@ -193,34 +237,35 @@ public class RedisConsumer implements IConsumer{
         if(messageStatus == null){
             messageStatus = MessageStatus.DELAY;
         }
-        ack(message,messageStatus);
+        ack(message.getId(),messageStatus);
     }
 
-    private void ack(Message message,MessageStatus messageStatus){
-        String luaText = "if ARGV[1] == 'SUCCESS' then\n" +
+    private void ack(String messageId,MessageStatus messageStatus){
+        String luaText = String.format("if ARGV[1] == 'SUCCESS' then\n" +
                 "    redis.call(\"zrem\",KEYS[1],ARGV[2]);\n" +
                 "    redis.call(\"hdel\",KEYS[2],ARGV[2]);\n" +
                 "    return;\n" +
                 "end;\n" +
-                "local level = {10,30,60,120,180,240,300,360,420,480,540}\n" +
+                "local level = {%s};\n" +
                 "local msg = redis.call(\"HGET\",KEYS[2],ARGV[2]);\n" +
                 "local msgTable = cjson.decode(msg);\n" +
                 "local retryCount = msgTable['retryCount'] + 1;\n" +
-                "msgTable['retryCount'] = retryCount;\n" +
-                "local msg1 = cjson.encode(msgTable);\n" +
-                "redis.call(\"hset\",KEYS[2],ARGV[2],msg1);\n" +
                 "\n" +
-                "redis.call(\"zrem\",KEYS[1],ARGV[2]);\n" +
-                "if(retryCount <= 11) then\n" +
+                "if(retryCount <= tonumber(ARGV[4])) then\n" +
+                "    msgTable['retryCount'] = retryCount;\n" +
+                "    local msg1 = cjson.encode(msgTable);\n" +
+                "    redis.call(\"hset\",KEYS[2],ARGV[2],msg1);\n" +
                 "    local expireTime = ARGV[3] + level[retryCount] * 1000;\n" +
+                "    redis.call(\"zrem\",KEYS[1],ARGV[2]);\n" +
                 "    redis.call(\"zadd\",KEYS[3],expireTime,ARGV[2]);\n" +
                 "    redis.call(\"PUBLISH\",KEYS[4],expireTime);\n" +
                 "else\n" +
-                "    redis.call(\"lpush\",KEYS[5],ARGV[2]);\n" +
-                "end;\n";
+                "    redis.call(\"zrem\",KEYS[1],ARGV[2]);\n" +
+                "    redis.call(\"zadd\",KEYS[5],ARGV[3],ARGV[2]);\n" +
+                "end;",this.retryLevel);
         this.redissonClient.getScript(StringCodec.INSTANCE).eval(RScript.Mode.READ_WRITE,luaText,RScript.ReturnType.VALUE,
                 Lists.newArrayList(this.preTopicKey,this.storeKey,this.topicKey,this.channelKey,this.dlqKey),
-                messageStatus.name(),message.getId(),System.currentTimeMillis());
+                messageStatus.name(),messageId,System.currentTimeMillis(),this.maxRetryCount);
     }
 
     private synchronized void createTimeout(long expireTime){
@@ -247,6 +292,7 @@ public class RedisConsumer implements IConsumer{
         this.messageHandleExecutor.shutdown();
         this.scheduledExecutorService.shutdown();
         this.clearTimeoutMapScheduledExecutorService.shutdown();
+        this.preTopicExceptionExecutorService.shutdown();
         this.isRunning = false;
     }
 
