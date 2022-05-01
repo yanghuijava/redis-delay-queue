@@ -1,3 +1,5 @@
 /.idea
 /client/target
 /client/redis-delay-queue-client.iml
+/cli/target/
+/cli/redis-delay-queue-cli.iml
