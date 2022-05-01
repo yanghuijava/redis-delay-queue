@@ -26,7 +26,7 @@ redis实现延迟队列
 
 ```java
 RedisProducer redisProducer = new RedisProducer();
-redisProducer.sendDelayMessage(Message.create("order_cancel","消息：" + DateUtil.format(new Date(),"yyyy-MM-dd HH:mm:ss.SSS")),1000 * 2);
+        redisProducer.sendDelayMessage(Message.create("order_cancel","消息：" + DateUtil.format(new Date(),"yyyy-MM-dd HH:mm:ss.SSS")),1000 * 2);
 ```
 
 备注：默认创建的`RedisProducer`连接的是本地redis，如果需要指定的redis，创建一个`RedissonClient`即可，本组件依赖`Redisson`;消费端一样，下面不作特殊说明了。
@@ -35,13 +35,13 @@ redisProducer.sendDelayMessage(Message.create("order_cancel","消息：" + DateU
 
 ```java
 RedisConsumer redisConsumer = new RedisConsumer();
-redisConsumer.setMaxRetryCount(5);
-redisConsumer.subscribe("order_cancel");
-redisConsumer.registerMessageListener(message -> {
-System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()) + "  " + message);
-	return MessageStatus.SUCCESS;
-});
-redisConsumer.start();
+        redisConsumer.setMaxRetryCount(5);
+        redisConsumer.subscribe("order_cancel");
+        redisConsumer.registerMessageListener(message -> {
+        System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()) + "  " + message);
+        return MessageStatus.SUCCESS;
+        });
+        redisConsumer.start();
 ```
 
 ##### 4、相关配置项
@@ -55,5 +55,7 @@ redisConsumer.start();
 * maxRetryCount：异常时，消息的最大重试次数，目前只支持16个级别的重试，10,30,60,120,180,240,300,360,420,480,540,600,1200,1800,3600,7200，单位秒，此值只能小于等于16，默认16次，超过重试次数，即进入死信队列。
 
 #### 实现原理
+
+<img src="https://raw.githubusercontent.com/yanghuijava/redis-delay-queue/main/images/redis%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97.png" style="zoom:100%;" />
 
 
