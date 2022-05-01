@@ -27,12 +27,12 @@ public class CliMain {
         Options options = CommandUtil.buildCommandlineOptions(new Options());
         switch (args.length){
             case 0:
-                printHelp(options);
+                printHelp();
                 break;
             case 1:
                 String command = CommandUtil.parseCommand(args);
                 if(command.equals("-h") || command.equals("--help") || command.equals("help") || command.equals("h")){
-                    printHelp(options);
+                    printHelp();
                     return;
                 }
                 SubCommand subCommand = subCommandMap.get(command);
@@ -40,7 +40,7 @@ public class CliMain {
                     CommandUtil.printHelp(subCommand.name(),subCommand.buildCommandlineOptions(options));
                 }else {
                     System.out.printf("subCommand:{%s} not exist!\n",command);
-                    printHelp(options);
+                    printHelp();
                 }
                 break;
             default:
@@ -49,7 +49,7 @@ public class CliMain {
                 String[] subArgs = CommandUtil.parseSubArgs(args);
                 if(subCommand == null){
                     System.out.printf("subCommand:{%s} not exist!\n",command);
-                    printHelp(options);
+                    printHelp();
                     return;
                 }
                 CommandLine commandLine = CommandUtil.parseCmdLine(subCommand.name(),subArgs,
@@ -59,8 +59,9 @@ public class CliMain {
         }
     }
 
-    private static void printHelp(Options options){
+    private static void printHelp(){
         for(Map.Entry<String, SubCommand> entry : subCommandMap.entrySet()){
+            Options options = CommandUtil.buildCommandlineOptions(new Options());
             CommandUtil.printHelp(entry.getKey(),entry.getValue().buildCommandlineOptions(options));
         }
         System.exit(0);
