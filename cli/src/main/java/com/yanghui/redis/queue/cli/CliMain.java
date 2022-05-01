@@ -39,7 +39,7 @@ public class CliMain {
                 if(subCommand != null){
                     CommandUtil.printHelp(subCommand.name(),subCommand.buildCommandlineOptions(options));
                 }else {
-                    System.out.printf("subCommand:{%s} not exist!\n",command);
+                    System.out.printf("subCommand:【%s】 not exist!\n",command);
                     printHelp();
                 }
                 break;
@@ -48,7 +48,7 @@ public class CliMain {
                 subCommand = subCommandMap.get(command);
                 String[] subArgs = CommandUtil.parseSubArgs(args);
                 if(subCommand == null){
-                    System.out.printf("subCommand:{%s} not exist!\n",command);
+                    System.out.printf("subCommand:【%s】 not exist!\n",command);
                     printHelp();
                     return;
                 }
