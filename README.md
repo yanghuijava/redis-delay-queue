@@ -58,9 +58,18 @@ redisConsumer.start();
 
 <img src="https://raw.githubusercontent.com/yanghuijava/redis-delay-queue/main/images/redis%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97.png" style="zoom:100%;" />
 
+这里二阶段消费原理参考阿里的一篇文章：https://www.toutiao.com/article/6969810934080684551/?app=news_article&timestamp=1650897110&use_new_style=1&req_id=20220425223150010133037132012BF348&group_id=6969810934080684551&share_token=50D46337-0304-415F-ADCB-F5534F04DF83&tt_from=weixin&utm_source=weixin&utm_medium=toutiao_ios&utm_campaign=client_share&wxshare_count=1
+
 ##### Topic设计
 
+topic是逻辑概念，这里对应redis的key有5个，分别的作用如下：
 
+* `redis_delay_queue_origin:{Topic名称}`，对应redis的`zset`数据结构，value表示消息的ID，score表示消息的到期执行时间戳，会有定时任务来扫描到期的消息
+* `redis_delay_queue_store:{Topic名称}`，对应redis的`hash`数据结构，hash的key表示消息ID，value表示消息的内容
+* `redis_delay_queue_list:{Topic名称}`，对应redis的`list`数据结构，存储的是消息ID，每当消息到期时间到了，`redis_delay_queue_origin:{Topic名称}`移动到当前`list`中，消费者会监听这个`list`。
+* `redis_delay_queue_pre:{Topic名称}`，对应redis的`zset`数据结构，为了保证每条消息的至少消费一次，每次把到期消息移动至`redis_delay_queue_list:{Topic名称}`外，这里还会放置到当前队列中，等业务真正消费完成，进行ack后，再删除。
+
+* `redis_delay_queue_DLQ:{Topic名称}`，对应redis的`zset`数据结构，消息一旦超过重试次数，即会进入死信队列。
 
 ##### Producer端
 
