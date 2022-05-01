@@ -33,6 +33,9 @@ public class RedisProducer implements IProducer{
         Assert.notBlank(message.getBody(),"message body not null");
         Assert.notBlank(message.getTopic(),"message topic not null");
         Assert.notBlank(message.getId(),"message id not null");
+        if(message.getRetryCount() == null){
+            message.setRetryCount(0);
+        }
         String topicKey = TopicUtil.wrapTopic(message.getTopic());
         String msgStoreKey = TopicUtil.wrapStore(message.getTopic());
         String channelKey = TopicUtil.wrapChannel(message.getTopic());

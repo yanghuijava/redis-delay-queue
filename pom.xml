@@ -12,7 +12,8 @@
     <description>redis延迟队列</description>
 
     <modules>
-
+        <module>client</module>
+        <module>cli</module>
     </modules>
 
     <properties>

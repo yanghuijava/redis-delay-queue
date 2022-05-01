@@ -1,10 +1,12 @@
 package com.yanghui.redis.queue.message;
 
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.IdUtil;
 import lombok.Data;
 import lombok.Getter;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,6 +26,8 @@ public class Message {
 
     private Integer retryCount;
 
+    private String timestampFormat;
+
     public Message(){}
 
     public Message(String topic,String body){
@@ -33,6 +37,7 @@ public class Message {
         this.body = body;
         this.id = IdUtil.objectId();
         this.retryCount = 0;
+        this.timestampFormat = DateUtil.format(new Date(),"yyyy-MM-dd HH:mm:ss.SSS");
     }
 
     public void addHeader(String key,String value){
