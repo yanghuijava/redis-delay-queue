@@ -35,13 +35,13 @@ RedisProducer redisProducer = new RedisProducer();
 
 ```java
 RedisConsumer redisConsumer = new RedisConsumer();
-        redisConsumer.setMaxRetryCount(5);
-        redisConsumer.subscribe("order_cancel");
-        redisConsumer.registerMessageListener(message -> {
-        System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()) + "  " + message);
-        return MessageStatus.SUCCESS;
-        });
-        redisConsumer.start();
+redisConsumer.setMaxRetryCount(5);
+redisConsumer.subscribe("order_cancel");
+redisConsumer.registerMessageListener(message -> {
+System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()) + "  " + message);
+	return MessageStatus.SUCCESS;
+});
+redisConsumer.start();
 ```
 
 ##### 4、相关配置项
@@ -57,5 +57,15 @@ RedisConsumer redisConsumer = new RedisConsumer();
 #### 实现原理
 
 <img src="https://raw.githubusercontent.com/yanghuijava/redis-delay-queue/main/images/redis%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97.png" style="zoom:100%;" />
+
+##### Topic设计
+
+
+
+##### Producer端
+
+![](https://github.com/yanghuijava/redis-delay-queue/blob/main/images/redisProducer.png?raw=true)
+
+##### Consumer端
 
 
