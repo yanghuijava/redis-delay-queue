@@ -26,8 +26,7 @@ public class RedisProducer implements IProducer{
         this.redissonClient = redissonClient;
     }
 
-    @Override
-    public void sendDelayMessage(Message message, long delayTime) {
+    private void checkParams(Message message, long delayTime){
         Assert.notNull(message,"message not null");
         Assert.isTrue(delayTime > 0,"delayTime must be greater than 0");
         Assert.notBlank(message.getBody(),"message body not null");
@@ -36,6 +35,11 @@ public class RedisProducer implements IProducer{
         if(message.getRetryCount() == null){
             message.setRetryCount(0);
         }
+    }
+
+    @Override
+    public void sendDelayMessage(Message message, long delayTime) {
+       this.checkParams(message,delayTime);
         String topicKey = TopicUtil.wrapTopic(message.getTopic());
         String msgStoreKey = TopicUtil.wrapStore(message.getTopic());
         String channelKey = TopicUtil.wrapChannel(message.getTopic());

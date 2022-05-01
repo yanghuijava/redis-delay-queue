@@ -1,7 +1,5 @@
 package com.yanghui.redis.queue.cli.command;
 
-import cn.hutool.core.util.IdUtil;
-import com.yanghui.redis.queue.consumer.IConsumerListener;
 import com.yanghui.redis.queue.consumer.MessageStatus;
 import com.yanghui.redis.queue.consumer.RedisConsumer;
 import org.apache.commons.cli.CommandLine;
