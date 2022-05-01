@@ -130,7 +130,7 @@ public class RedisConsumer implements IConsumer{
         Assert.isTrue(this.maxRetryCount > 0,"maxRetryCount must be greater than 0");
         Assert.notBlank(this.retryLevel,"retryLevel is not null");
         this.checkRetryParams();
-
+        this.isRunning = true;
         /** 监听channel消息 **/
         this.redissonClient.getTopic(channelKey, StringCodec.INSTANCE).addListener(String.class, (channel, msg) -> {
             /** 获取订阅channel消息，内容为延迟消息的到期时间戳 **/
@@ -139,7 +139,7 @@ public class RedisConsumer implements IConsumer{
 
         /** 监听消息 **/
         this.scheduledExecutorService.submit((Runnable) () -> {
-            while(true){
+            while(isRunning){
                 try {
                     String messageJson = (String)redissonClient.getBlockingQueue(listKey,StringCodec.INSTANCE)
                             .poll(1000 * 3,TimeUnit.MILLISECONDS);
@@ -178,7 +178,6 @@ public class RedisConsumer implements IConsumer{
         this.preTopicExceptionExecutorService.scheduleAtFixedRate(() -> {
             handleAckException();
         },2,60,TimeUnit.SECONDS);
-        this.isRunning = true;
         log.info("Successful consumer startup！");
         /** 启动后 执行一次 任务推送 **/
         pushTask();
@@ -290,13 +289,12 @@ public class RedisConsumer implements IConsumer{
         if(!this.isRunning){
             return;
         }
-        this.redissonClient.shutdown();
+        this.isRunning = false;
         this.hashedWheelTimer.stop();
         this.messageHandleExecutor.shutdown();
         this.scheduledExecutorService.shutdown();
         this.clearTimeoutMapScheduledExecutorService.shutdown();
         this.preTopicExceptionExecutorService.shutdown();
-        this.isRunning = false;
     }
 
     @Override

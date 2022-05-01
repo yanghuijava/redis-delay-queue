@@ -35,12 +35,11 @@ public class SubMessageSubCommand extends AbstractSubCommand implements SubComma
 
     @Override
     public void execute(CommandLine commandLine, Options options) {
-        RedisConsumer redisConsumer = null;
         try{
             if(!commandLine.hasOption("t")){
                 super.printHelpAndExit(this.name(),"r",options);
             }
-            redisConsumer = new RedisConsumer(super.createClient(commandLine));
+            final RedisConsumer redisConsumer = new RedisConsumer(super.createClient(commandLine));
             redisConsumer.subscribe(commandLine.getOptionValue("t").trim());
             redisConsumer.registerMessageListener(message -> {
                 System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()) + " " + message);
@@ -48,6 +47,13 @@ public class SubMessageSubCommand extends AbstractSubCommand implements SubComma
             });
             redisConsumer.start();
             System.out.println("consumer start......");
+
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if(redisConsumer != null){
+                    redisConsumer.stop();
+                    System.out.println("consumer stop......");
+                }
+            }));
         }catch (Exception e){
             e.printStackTrace();
         }
