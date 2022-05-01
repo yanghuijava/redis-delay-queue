@@ -54,6 +54,28 @@ redisConsumer.start();
 * consumeThreadMax：消费端处理消息线程池最大线程数
 * maxRetryCount：异常时，消息的最大重试次数，目前只支持16个级别的重试，10,30,60,120,180,240,300,360,420,480,540,600,1200,1800,3600,7200，单位秒，此值只能小于等于16，默认16次，超过重试次数，即进入死信队列。
 
+##### 5、命令行操作
+
+为了方面体验延迟队列的功能，这里提供一个命令行工具。
+
+可以通过命令来查看所有的参数说明：
+
+```
+java -jar cli.jar -h
+```
+
+* 发送消息
+
+  ```shell
+  java -jar cli.jar sendMessage -r 127.0.0.1:6379 -t order_cancel -m 消息1 -d 5000
+  ```
+
+* 消费消息
+
+  ```shell
+  java -jar cli.jar subMessage -r 127.0.0.1:6379 -t order_cancel
+  ```
+
 #### 实现原理
 
 <img src="https://raw.githubusercontent.com/yanghuijava/redis-delay-queue/main/images/redis%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97.png" style="zoom:100%;" />
@@ -77,4 +99,8 @@ topic是逻辑概念，这里对应redis的key有5个，分别的作用如下：
 
 ##### Consumer端
 
+![](https://github.com/yanghuijava/redis-delay-queue/blob/main/images/redisConsumer.png?raw=true)
 
+##### 异常处理
+
+如何消息ack失败，消息会一直处于`redis_delay_queue_pre:{Topic名称}`队列中，而无法消费了，这时会启动一个定时任务，定时扫描`redis_delay_queue_pre:{Topic名称}`，把时间超过3分钟没有ack的消息重新发布到`redis_delay_queue_origin:{Topic名称}`队列中，让消息重新消费。
