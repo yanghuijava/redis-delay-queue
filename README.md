@@ -103,4 +103,4 @@ topic是逻辑概念，这里对应redis的key有5个，分别的作用如下：
 
 ##### 异常处理
 
-如何消息ack失败，消息会一直处于`redis_delay_queue_pre:{Topic名称}`队列中，而无法消费了，这时会启动一个定时任务，定时扫描`redis_delay_queue_pre:{Topic名称}`，把时间超过3分钟没有ack的消息重新发布到`redis_delay_queue_origin:{Topic名称}`队列中，让消息重新消费。
+如果消息ack失败，消息会一直处于`redis_delay_queue_pre:{Topic名称}`队列中，而无法消费了，这时会启动一个定时任务，定时扫描`redis_delay_queue_pre:{Topic名称}`，把时间超过3分钟没有ack的消息重新发布到`redis_delay_queue_origin:{Topic名称}`队列中，让消息重新消费。
